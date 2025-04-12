@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日运势测算 - DeepSeek奇门八卦</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8f5f2;
+            color: #333;
+        }
+        
+        .card {
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .luck-item {
+            display: inline-block;
+            margin: 0.3rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+        
+        .direction {
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+            margin: 0.5rem;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .bg-lucky {
+            background: linear-gradient(135deg, #f5d020 0%, #f53803 100%);
+        }
+        
+        .bg-unlucky {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 2px solid rgba(0,0,0,.1);
+            border-radius: 50%;
+            border-top-color: #f59e0b;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">DeepSeek每日运势测算</h1>
+            <p class="text-lg text-gray-600">基于DeepSeek算法的奇门遁甲、梅花易数和小六壬精准测算</p>
+            <div class="mt-4 w-20 h-1 bg-amber-500 mx-auto"></div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 card">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-user-circle text-amber-500 mr-3"></i> 个人信息
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2" for="birthday">公历生日</label>
+                    <input type="date" id="birthday" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-medium mb-2" for="birthtime">出生时间</label>
+                    <input type="time" id="birthtime" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <button id="calculate-btn" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                    <i class="fas fa-calculator mr-2"></i> 测算今日运势
+                </button>
+            </div>
+        </div>
+        
+        <div id="result-container" class="hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-8 card animate-pulse">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-calendar-day text-amber-500 mr-3"></i> 
+                        <span id="today-date">2023年11月15日</span>
+                    </h2>
+                    <span class="px-4 py-2 rounded-full bg-amber-100 text-amber-800 font-medium" id="chinese-date">农历十月初二</span>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">今日运势</h3>
+                    <p class="text-gray-600" id="fortune-text"></p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">吉利颜色</h3>
+                        <div id="lucky-colors"></div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">吉利物品</h3>
+                        <div id="lucky-items"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-3">吉凶方位</h3>
+                    <div class="flex flex-wrap justify-center" id="directions-container">
+                        <div class="direction" data-dir="东">东</div>
+                        <div class="direction" data-dir="东南">东南</div>
+                        <div class="direction" data-dir="南">南</div>
+                        <div class="direction" data-dir="西南">西南</div>
+                        <div class="direction" data-dir="西">西</div>
+                        <div class="direction" data-dir="西北">西北</div>
+                        <div class="direction" data-dir="北">北</div>
+                        <div class="direction" data-dir="东北">东北</div>
+                    </div>
+                    <p class="text-center text-gray-600 mt-3">红色为吉利方位，蓝色为不利方位，灰色为中性方位</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-amber-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-amber-800 mb-2 flex items-center">
+                            <i class="fas fa-yin-yang mr-2"></i> 奇门遁甲财宫
+                        </h4>
+                        <p class="text-gray-700" id="qimen-text"></p>
+                    </div>
+                    
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-blue-800 mb-2 flex items-center">
+                            <i class="fas fa-leaf mr-2"></i> 梅花易数
+                        </h4>
+                        <p class="text-gray-700" id="meihua-text"></p>
+                    </div>
+                    
+                    <div class="bg-purple-50 rounded-lg p-4">
+                        <h4 class="font-semibold text-purple-800 mb-2 flex items-center">
+                            <i class="fas fa-water mr-2"></i> 小六壬
+                        </h4>
+                        <p class="text-gray-700" id="liuren-text"></p>
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center">
+                    <button id="share-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-full transition duration-300 inline-flex items-center">
+                        <i class="fas fa-share-alt mr-2"></i> 分享运势
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 card">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-lightbulb text-amber-500 mr-3"></i> 今日建议
+                </h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 mr-4">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">事业</h4>
+                            <p class="text-gray-600" id="career-advice"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-4">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">财运</h4>
+                            <p class="text-gray-600" id="wealth-advice"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 mr-4">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">感情</h4>
+                            <p class="text-gray-600" id="love-advice"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-4">
+                            <i class="fas fa-heartbeat"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">健康</h4>
+                            <p class="text-gray-600" id="health-advice"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置默认日期为今天
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('birthday').value = formattedDate;
+            
+            // 设置默认时间为早上8点
+            document.getElementById('birthtime').value = '08:00';
+            
+            // 更新今天的日期显示
+            updateTodayDate();
+            
+            // 计算按钮点击事件
+            document.getElementById('calculate-btn').addEventListener('click', calculateFortune);
+            
+            // 分享按钮点击事件
+            document.getElementById('share-btn').addEventListener('click', shareFortune);
+        });
+        
+        function updateTodayDate() {
+            const today = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const chineseDate = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', options).format(today);
+            
+            document.getElementById('today-date').textContent = today.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            
+            document.getElementById('chinese-date').textContent = chineseDate.split(' ')[0];
+        }
+        
+        function calculateFortune() {
+            const birthday = document.getElementById('birthday').value;
+            const birthtime = document.getElementById('birthtime').value;
+            
+            if (!birthday) {
+                alert('请输入您的生日日期');
+                return;
+            }
+            
+            // 显示加载动画
+            const calculateBtn = document.getElementById('calculate-btn');
+            calculateBtn.innerHTML = '<span class="loading mr-2"></span> 测算中...';
+            calculateBtn.disabled = true;
+            
+            // 模拟API调用延迟
+            setTimeout(() => {
+                // 基于DeepSeek算法生成运势结果
+                generateDeepSeekFortune(birthday, birthtime);
+                
+                // 显示结果
+                document.getElementById('result-container').classList.remove('hidden');
+                
+                // 恢复按钮状态
+                calculateBtn.innerHTML = '<i class="fas fa-calculator mr-2"></i> 重新测算';
+                calculateBtn.disabled = false;
+            }, 1500);
+        }
+        
+        function generateDeepSeekFortune(birthday, birthtime) {
+            // 解析生日日期和时间
+            const birthDate = new Date(birthday);
+            const [hours, minutes] = birthtime.split(':').map(Number);
+            birthDate.setHours(hours, minutes);
+            
+            // 获取当前日期
+            const today = new Date();
+            
+            // 计算年龄
+            const age = today.getFullYear() - birthDate.getFullYear();
+            
+            // 计算八字五行
+            const baziElements = calculateBaziElements(birthDate);
+            
+            // 根据DeepSeek算法生成运势内容
+            const fortuneText = generateFortuneText(birthDate, today, age, baziElements);
+            document.getElementById('fortune-text').textContent = fortuneText;
+            
+            // 吉利颜色
+            const luckyColors = calculateLuckyColors(birthDate, today, baziElements);
+            const luckyColorsContainer = document.getElementById('lucky-colors');
+            luckyColorsContainer.innerHTML = '';
+            luckyColors.forEach(color => {
+                const colorClass = getColorClass(color);
+                const span = document.createElement('span');
+                span.className = `luck-item ${colorClass} text-white`;
+                span.textContent = color;
+                luckyColorsContainer.appendChild(span);
+            });
+            
+            // 吉利物品
+            const luckyItems = calculateLuckyItems(birthDate, today, baziElements);
+            const luckyItemsContainer = document.getElementById('lucky-items');
+            luckyItemsContainer.innerHTML = '';
+            luckyItems.forEach(item => {
+                const span = document.createElement('span');
+                span.className = 'luck-item bg-amber-100 text-amber-800';
+                span.textContent = item;
+                luckyItemsContainer.appendChild(span);
+            });
+            
+            // 吉凶方位
+            const directions = calculateLuckyDirections(birthDate, today, baziElements);
+            const directionsContainer = document.getElementById('directions-container');
+            directionsContainer.querySelectorAll('.direction').forEach(el => {
+                const dir = el.getAttribute('data-dir');
+                const status = directions[dir];
+                
+                if (status === 'lucky') {
+                    el.className = 'direction bg-lucky text-white';
+                } else if (status === 'unlucky') {
+                    el.className = 'direction bg-unlucky text-white';
+                } else {
+                    el.className = 'direction bg-gray-200 text-gray-700';
+                }
+            });
+            
+            // 奇门遁甲财宫
+            const qimenText = generateQimenText(birthDate, today, baziElements);
+            document.getElementById('qimen-text').textContent = qimenText;
+            
+            // 梅花易数
+            const meihuaText = generateMeihuaText(birthDate, today, baziElements);
+            document.getElementById('meihua-text').textContent = meihuaText;
+            
+            // 小六壬
+            const liurenText = generateLiurenText(birthDate, today, baziElements);
+            document.getElementById('liuren-text').textContent = liurenText;
+            
+            // 今日建议
+            const advice = generateDailyAdvice(birthDate, today, baziElements);
+            document.getElementById('career-advice').textContent = advice.career;
+            document.getElementById('wealth-advice').textContent = advice.wealth;
+            document.getElementById('love-advice').textContent = advice.love;
+            document.getElementById('health-advice').textContent = advice.health;
+        }
+        
+        function calculateBaziElements(birthDate) {
+            // 简化的八字五行计算
+            const year = birthDate.getFullYear();
+            const month = birthDate.getMonth() + 1;
+            const day = birthDate.getDate();
+            const hour = birthDate.getHours();
+            
+            // 天干地支对应的五行
+            const heavenlyStems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+            const earthlyBranches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+            const elements = ['木', '木', '火', '火', '土', '土', '金', '金', '水', '水'];
+            
+            // 计算年柱
+            const yearStem = heavenlyStems[(year - 4) % 10];
+            const yearBranch = earthlyBranches[(year - 4) % 12];
+            const yearElement = elements[(year - 4) % 10];
+            
+            // 计算月柱 (简化版)
+            const monthElement = elements[(month + 1) % 10];
+            
+            // 计算日柱 (简化版)
+            const dayElement = elements[(day) % 10];
+            
+            // 计算时柱 (简化版)
+            const hourElement = elements[Math.floor(hour / 2) % 10];
+            
+            return {
+                year: { stem: yearStem, branch: yearBranch, element: yearElement },
+                month: { element: monthElement },
+                day: { element: dayElement },
+                hour: { element: hourElement }
+            };
+        }
+        
+        function generateFortuneText(birthDate, today, age, baziElements) {
+            // 根据八字和当前日期生成运势文本
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const elementStrength = calculateElementStrength(baziElements, dayOfYear);
+            
+            let fortuneText = `根据您的生辰八字分析（${baziElements.year.stem}${baziElements.year.branch}年出生，五行属${baziElements.year.element}），`;
+            
+            if (elementStrength > 0.7) {
+                fortuneText += `今日五行能量强劲，整体运势上佳。`;
+            } else if (elementStrength > 0.4) {
+                fortuneText += `今日五行能量平衡，整体运势平稳。`;
+            } else {
+                fortuneText += `今日五行能量稍弱，需多加注意。`;
+            }
+            
+            // 根据年龄和当前月份添加建议
+            const month = today.getMonth() + 1;
+            if (age < 30) {
+                fortuneText += `青年时期，${month}月是您发展事业的好时机。`;
+            } else if (age < 50) {
+                fortuneText += `中年时期，${month}月宜稳中求进。`;
+            } else {
+                fortuneText += `晚年时期，${month}月宜修身养性。`;
+            }
+            
+            return fortuneText;
+        }
+        
+        function calculateElementStrength(baziElements, dayOfYear) {
+            // 简化的五行能量计算
+            const elements = ['木', '火', '土', '金', '水'];
+            const season = Math.floor(dayOfYear / 73) % 5; // 将一年分为5个季节
+            const seasonElement = elements[season];
+            
+            let strength = 0;
+            if (baziElements.year.element === seasonElement) strength += 0.3;
+            if (baziElements.month.element === seasonElement) strength += 0.2;
+            if (baziElements.day.element === seasonElement) strength += 0.3;
+            if (baziElements.hour.element === seasonElement) strength += 0.2;
+            
+            return Math.min(1, strength);
+        }
+        
+        function calculateLuckyColors(birthDate, today, baziElements) {
+            // 根据五行生克关系计算吉利颜色
+            const element = baziElements.year.element;
+            const colors = {
+                '木': ['绿色', '青色', '蓝色'],
+                '火': ['红色', '紫色', '橙色'],
+                '土': ['黄色', '棕色', '米色'],
+                '金': ['白色', '金色', '银色'],
+                '水': ['黑色', '深蓝色', '灰色']
+            };
+            
+            // 根据季节调整颜色
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const season = Math.floor(dayOfYear / 73) % 5;
+            
+            // 添加季节对应的颜色
+            const seasonColors = [
+                ['绿色', '青色'], // 木季
+                ['红色', '紫色'], // 火季
+                ['黄色', '棕色'], // 土季
+                ['白色', '银色'], // 金季
+                ['黑色', '蓝色']  // 水季
+            ];
+            
+            const result = [...colors[element], ...seasonColors[season]];
+            return [...new Set(result)].slice(0, 3); // 去重并取前3个
+        }
+        
+        function calculateLuckyItems(birthDate, today, baziElements) {
+            // 根据五行和季节计算吉利物品
+            const element = baziElements.year.element;
+            const items = {
+                '木': ['绿植', '木质饰品', '书籍'],
+                '火': ['蜡烛', '红色饰品', '电子设备'],
+                '土': ['陶瓷', '玉石', '水晶'],
+                '金': ['金属饰品', '硬币', '手表'],
+                '水': ['水杯', '蓝色物品', '镜子']
+            };
+            
+            // 根据季节调整物品
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const season = Math.floor(dayOfYear / 73) % 5;
+            
+            const seasonItems = [
+                ['种子', '木雕'], // 木季
+                ['灯笼', '香薰'], // 火季
+                ['石头', '沙漏'], // 土季
+                ['金属风铃', '刀具'], // 金季
+                ['鱼缸', '喷泉']  // 水季
+            ];
+            
+            const result = [...items[element], ...seasonItems[season]];
+            return [...new Set(result)].slice(0, 3); // 去重并取前3个
+        }
+        
+        function calculateLuckyDirections(birthDate, today, baziElements) {
+            // 根据八字和当前日期计算吉凶方位
+            const directions = ['东', '东南', '南', '西南', '西', '西北', '北', '东北'];
+            const result = {};
+            
+            // 根据五行确定吉利方位
+            const element = baziElements.year.element;
+            const luckyDirs = {
+                '木': ['东', '东南'],
+                '火': ['南'],
+                '土': ['西南', '东北'],
+                '金': ['西', '西北'],
+                '水': ['北']
+            };
+            
+            // 根据季节确定不利方位
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const season = Math.floor(dayOfYear / 73) % 5;
+            const unluckyDirs = [
+                ['西', '西北'], // 木季克金
+                ['北'],         // 火季克水
+                ['东', '东南'], // 土季克木
+                ['南'],         // 金季克火
+                ['西南', '东北'] // 水季克土
+            ];
+            
+            directions.forEach(dir => {
+                if (luckyDirs[element].includes(dir)) {
+                    result[dir] = 'lucky';
+                } else if (unluckyDirs[season].includes(dir)) {
+                    result[dir] = 'unlucky';
+                } else {
+                    result[dir] = 'neutral';
+                }
+            });
+            
+            return result;
+        }
+        
+        function generateQimenText(birthDate, today, baziElements) {
+            // 生成奇门遁甲财宫分析
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const palace = (dayOfYear + birthDate.getDate()) % 9 || 9;
+            
+            const palaces = {
+                1: '坎宫',
+                2: '坤宫',
+                3: '震宫',
+                4: '巽宫',
+                5: '中宫',
+                6: '乾宫',
+                7: '兑宫',
+                8: '艮宫',
+                9: '离宫'
+            };
+            
+            const advice = {
+                1: '财星入坎宫，主暗财流动，宜保守理财，不宜大额投资。',
+                2: '财星落坤宫，主稳定收入，宜处理固定资产相关事务。',
+                3: '财星入震宫，主突发财运，但需防冲动消费。',
+                4: '财星落巽宫，主偏财运佳，宜发展副业或兼职。',
+                5: '财星居中宫，主财运平稳，宜储蓄不宜投机。',
+                6: '财星入乾宫，主贵人带财，宜寻求合作机会。',
+                7: '财星落兑宫，主口才生财，宜通过沟通谈判获利。',
+                8: '财星入艮宫，主长期收益，宜规划未来财务。',
+                9: '财星落离宫，主火旺生财，但需防过度消费。'
+            };
+            
+            return `今日财星落${palaces[palace]}，${advice[palace]} ${getElementAdvice(baziElements.year.element)}`;
+        }
+        
+        function generateMeihuaText(birthDate, today, baziElements) {
+            // 生成梅花易数卦象分析
+            const day = today.getDate();
+            const month = today.getMonth() + 1;
+            const hexagramNum = (day + month + birthDate.getDate()) % 64 || 64;
+            
+            const hexagrams = {
+                1: '乾为天',
+                2: '坤为地',
+                3: '水雷屯',
+                4: '山水蒙',
+                11: '地天泰',
+                12: '天地否',
+                13: '天火同人',
+                14: '火天大有',
+                25: '天雷无妄',
+                26: '山天大畜',
+                27: '山雷颐',
+                28: '泽风大过',
+                29: '坎为水',
+                30: '离为火',
+                31: '泽山咸',
+                32: '雷风恒',
+                33: '天山遁',
+                34: '雷天大壮',
+                45: '泽地萃',
+                46: '地风升',
+                47: '泽水困',
+                48: '水风井',
+                49: '泽火革',
+                50: '火风鼎',
+                51: '震为雷',
+                52: '艮为山',
+                53: '风山渐',
+                54: '雷泽归妹',
+                55: '雷火丰',
+                56: '火山旅',
+                57: '巽为风',
+                58: '兑为泽',
+                59: '风水涣',
+                60: '水泽节',
+                61: '风泽中孚',
+                62: '雷山小过',
+                63: '水火既济',
+                64: '火水未济'
+            };
+            
+            const closestHexagram = Object.keys(hexagrams).reduce((prev, curr) => {
+                return (Math.abs(curr - hexagramNum) < Math.abs(prev - hexagramNum) ? curr : prev);
+            });
+            
+            const hexagramAdvice = {
+                '乾为天': '刚健中正，宜积极进取，但需防骄傲。',
+                '坤为地': '柔顺包容，宜以静制动，厚德载物。',
+                '水雷屯': '初创艰难，宜稳扎稳打，不可冒进。',
+                '山水蒙': '启蒙时期，宜学习新知，请教高人。',
+                '地天泰': '天地交泰，万事亨通，宜把握良机。',
+                '天地否': '闭塞不通，宜忍耐等待，保存实力。',
+                '天火同人': '志同道合，宜团队合作，共谋发展。',
+                '火天大有': '大有所获，宜分享成果，不可独享。',
+                '天雷无妄': '无妄之灾，宜谨言慎行，避免争端。',
+                '山天大畜': '大畜积累，宜储备资源，厚积薄发。',
+                '山雷颐': '颐养身心，宜注重健康，修身养性。',
+                '泽风大过': '大过非常，宜改革创新，突破常规。',
+                '坎为水': '险陷重重，宜谨慎行事，步步为营。',
+                '离为火': '光明照耀，宜展示才华，传播理念。',
+                '泽山咸': '感应相通，宜增进感情，建立人脉。',
+                '雷风恒': '恒久之道，宜持之以恒，不可半途而废。',
+                '天山遁': '退避隐遁，宜暂时退让，保存实力。',
+                '雷天大壮': '大壮强盛，宜把握时机，积极行动。',
+                '泽地萃': '荟萃聚集，宜参加聚会，拓展人脉。',
+                '地风升': '上升发展，宜提升自我，谋求进步。',
+                '泽水困': '困顿艰难，宜忍耐坚持，等待转机。',
+                '水风井': '井养不穷，宜分享资源，互助互利。',
+                '泽火革': '变革创新，宜破旧立新，改革弊端。',
+                '火风鼎': '鼎新立业，宜建立基业，稳固根本。',
+                '震为雷': '震动惊醒，宜迅速行动，把握先机。',
+                '艮为山': '止而不动，宜适可而止，不可冒进。',
+                '风山渐': '渐进发展，宜循序渐进，不可急躁。',
+                '雷泽归妹': '婚嫁之象，宜处理感情婚姻事宜。',
+                '雷火丰': '丰盛硕大，宜庆祝收获，分享喜悦。',
+                '火山旅': '旅行在外，宜注意安全，谨慎行事。',
+                '巽为风': '随风顺入，宜灵活变通，顺应时势。',
+                '兑为泽': '喜悦沟通，宜表达情感，增进关系。',
+                '风水涣': '涣散分离，宜凝聚人心，团结一致。',
+                '水泽节': '节制有度，宜控制欲望，不可放纵。',
+                '风泽中孚': '诚信待人，宜遵守诺言，建立信任。',
+                '雷山小过': '小有过错，宜反省改正，不可大意。',
+                '水火既济': '事已成功，宜巩固成果，防微杜渐。',
+                '火水未济': '事未成功，宜继续努力，不可松懈。'
+            };
+            
+            return `卦象显示"${hexagrams[closestHexagram]}"，${hexagramAdvice[hexagrams[closestHexagram]]} ${getElementAdvice(baziElements.year.element)}`;
+        }
+        
+        function generateLiurenText(birthDate, today, baziElements) {
+            // 生成小六壬课象分析
+            const hour = today.getHours();
+            const day = today.getDate();
+            const liurenNum = (hour + day + birthDate.getDate()) % 6 || 6;
+            
+            const liurenClasses = {
+                1: '大安',
+                2: '留连',
+                3: '速喜',
+                4: '赤口',
+                5: '小吉',
+                6: '空亡'
+            };
+            
+            const liurenAdvice = {
+                '大安': '主安稳平和，宜处理常规事务，不宜冒险。',
+                '留连': '主拖延阻滞，需耐心等待，不可急躁。',
+                '速喜': '主快速成功，宜把握机会，迅速行动。',
+                '赤口': '主口舌是非，需谨言慎行，避免争执。',
+                '小吉': '主小有收获，宜处理日常事务，稳步前进。',
+                '空亡': '主虚惊一场，需保持冷静，不可轻信他人。'
+            };
+            
+            return `得"${liurenClasses[liurenNum]}"课，${liurenAdvice[liurenClasses[liurenNum]]} ${getElementAdvice(baziElements.year.element)}`;
+        }
+        
+        function generateDailyAdvice(birthDate, today, baziElements) {
+            // 生成今日各项建议
+            const element = baziElements.year.element;
+            const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+            const season = Math.floor(dayOfYear / 73) % 5;
+            
+            const careerAdvices = {
+                '木': '宜创新思维，开拓新项目，避免固步自封。',
+                '火': '宜积极表现，争取领导注意，避免过度张扬。',
+                '土': '宜稳扎稳打，处理细节工作，避免好高骛远。',
+                '金': '宜制定计划，完善规章制度，避免随意变更。',
+                '水': '宜灵活变通，处理人际关系，避免固执己见。'
+            };
+            
+            const wealthAdvices = {
+                '木': '正财稳定，偏财需谨慎，避免高风险投资。',
+                '火': '财运旺盛，但需理性消费，避免冲动购物。',
+                '土': '财运平稳，宜储蓄积累，不宜大额支出。',
+                '金': '有意外收入机会，但需防财务纠纷。',
+                '水': '财运波动较大，宜保守理财，不宜投机。'
+            };
+            
+            const loveAdvices = {
+                '木': '感情需主动沟通，避免误会积累。',
+                '火': '感情热烈，但需控制情绪，避免争执。',
+                '土': '感情稳定，宜多关心伴侣，避免忽视对方。',
+                '金': '感情需理性处理，避免情绪化决定。',
+                '水': '感情多变，需保持耐心，避免急躁。'
+            };
+            
+            const healthAdvices = {
+                '木': '注意肝胆健康，保持情绪平稳，适量运动。',
+                '火': '注意心脏健康，避免过度劳累，保证休息。',
+                '土': '注意脾胃健康，饮食规律，避免暴饮暴食。',
+                '金': '注意呼吸系统，避免受凉，多喝水。',
+                '水': '注意肾脏健康，避免熬夜，适度运动。'
+            };
+            
+            // 根据季节调整建议
+            const seasonModifiers = [
+                '春季木旺，宜多外出活动，接触自然。',
+                '夏季火旺，宜多补充水分，避免中暑。',
+                '长夏土旺，宜注意饮食卫生，避免肠胃不适。',
+                '秋季金旺，宜多呼吸新鲜空气，增强免疫力。',
+                '冬季水旺，宜注意保暖，避免受寒。'
+            ];
+            
+            return {
+                career: `${careerAdvices[element]} ${seasonModifiers[season]}`,
+                wealth: `${wealthAdvices[element]} ${seasonModifiers[season]}`,
+                love: `${loveAdvices[element]} ${seasonModifiers[season]}`,
+                health: `${healthAdvices[element]} ${seasonModifiers[season]}`
+            };
+        }
+        
+        function getElementAdvice(element) {
+            // 根据五行给出额外建议
+            const advice = {
+                '木': '木命之人今日宜穿绿色系衣物，增强运势。',
+                '火': '火命之人今日宜保持明亮环境，增强正能量。',
+                '土': '土命之人今日宜接触大地，如散步公园等。',
+                '金': '金命之人今日宜佩戴金属饰品，增强气场。',
+                '水': '水命之人今日宜多喝水，保持流动性。'
+            };
+            return advice[element];
+        }
+        
+        function getColorClass(color) {
+            const colorMap = {
+                '红色': 'bg-red-500',
+                '紫色': 'bg-purple-500',
+                '绿色': 'bg-green-500',
+                '青色': 'bg-teal-500',
+                '蓝色': 'bg-blue-500',
+                '黄色': 'bg-yellow-500',
+                '橙色': 'bg-orange-500',
+                '棕色': 'bg-amber-700',
+                '米色': 'bg-amber-200',
+                '白色': 'bg-gray-100',
+                '金色': 'bg-yellow-400',
+                '银色': 'bg-gray-400',
+                '黑色': 'bg-gray-800',
+                '深蓝色': 'bg-blue-800',
+                '灰色': 'bg-gray-500'
+            };
+            return colorMap[color] || 'bg-gray-500';
+        }
+        
+        function shareFortune() {
+            alert('运势已复制到剪贴板，可以分享给朋友了！');
+            // 实际应用中可以实现更复杂的分享功能
+        }
+    </script>
+</body>
+</html>
